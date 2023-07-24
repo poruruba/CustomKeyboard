@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline'; style-src * 'unsafe-inline'; media-src *; img-src * data: content: blob:;">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+
+  <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="css/start.css">
+  <script src="js/methods_bootstrap.js"></script>
+  <script src="js/comp_bootstrap.js"></script>
+  <script src="js/comp_utils.js"></script>
+  <script src="js/vue_utils.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+  <title>QuickJS_ESP32</title>
+</head>
+
+<body>
+  <!--
+    <div id="loader-background">
+      <div class="sk-plane sk-center"></div>
+    </div>
+-->
+  <div id="top" class="container">
+    <div class="jumbotron">
+      <h1>ShortCutKey Editor</h1>
+    </div>
+
+      <div class="form-inline pull-right">
+        <label>ipaddress:port</label> <input type="text" class="form-control" v-model="ipaddress">
+      </div>
+
+      <button class="btn btn-default" v-on:click="irlist_refresh">更新</button>
+      <button class="btn btn-primary" v-on:click="start_ir_register">新規追加</button>
+      <button class="btn btn-default btn-sm" v-on:click="ir_reboot">リブート</button>
+
+      <table class="table table-striped">
+        <thead>
+          <tr><th>ir_name</th><th>ir_value</th><th>key_name</th><th>key_lang</th><th>key_type</th><th>text/key</th><th>action</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, index) in ir_list">
+            <td>{{item.ir_name}}</td><td>{{item.ir_value}}</td><td>{{item.key_name}}</td><td>{{item.key_lang}}</td><td>{{item.key_type}}</td>
+            <td>
+              <span v-if="item.key_type=='text'">{{item.text}}</span>
+              <span v-if="item.key_type=='key' || item.key_type=='key_mac'">
+                mod: {{mod2list(item.mod, item.key_type=='key_mac')}}<br>code: {{code2disp(item.code, item.key_lang)}}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-default btn-sm" v-on:click="start_ir_update(index)">IR更新</button>
+              <button class="btn btn-default btn-sm" v-on:click="start_key_update(index)">Key更新</button>
+              <button class="btn btn-default btn-sm" v-on:click="start_ir_delete(index)">削除</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="modal fade" id="ir_register_dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">ir_register</h4>
+            </div>
+            <div class="modal-body">
+              <label>decode_type</label> {{params_ir_register.result.decode_type}}<br>
+              <label>address</label> {{params_ir_register.result.value}}<br>
+              <label>command</label> {{params_ir_register.result.command}}<br>
+              <label>rawbuf</label> <textarea class="form-control" rows="3" readonly>{{params_ir_register.result.rawbuf}}</textarea><br>
+              <label>value</label> {{params_ir_register.result.value}}<br>
+              <label>name</label> <input type="text" class="form-control" v-model="params_ir_register.name"><br>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-default" v-on:click="call_ir_register">登録</button>
+              <button class="btn btn-default" v-on:click="dialog_close('#ir_register_dialog')">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="ir_update_dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">ir_update</h4>
+            </div>
+            <div class="modal-body">
+              <label>ir_value</label> {{params_ir_update.ir_value}}<br>
+              <label>ir_name</label> <input type="text" class="form-control" v-model="params_ir_update.ir_name"><br>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-default" v-on:click="call_ir_update">更新</button>
+              <button class="btn btn-default" v-on:click="dialog_close('#ir_update_dialog')">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="key_update_dialog">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title">key_update</h4>
+            </div>
+            <div class="modal-body">
+              <div class="form-inline">
+                <label>ir_name</label> {{params_key_update.ir_name}}<br>
+                <label>ir_value</label> {{params_key_update.ir_value}}<br>
+                <label>key_name</label> <input type="text" class="form-control" v-model="params_key_update.key_name"><br>
+                <label>key_type</label> <select class="form-control" v-model="params_key_update.key_type">
+                  <option value="text">text</option>
+                  <option value="key">key</option>
+                  <option value="key_mac">key_mac</option>
+                </select>
+              </div><br>
+              <span class="form-inline">
+                <label>key_lang</label> <select class="form-control" v-model.number="params_key_update.key_lang" v-on:change="change_keylang">
+                  <option value="0">us</option>
+                  <option value="1">jp</option>
+                </select><br>
+              </span>
+              <span v-if="params_key_update.key_type=='text'">
+                <label>text</label> <input type="text" class="form-control" v-model="params_key_update.text">
+              </span>
+              <span v-if="params_key_update.key_type=='key'">
+                <div class="form-inline">
+                  <label>mod</label> <select class="form-control" v-model="params_key_update.mods" multiple>
+                    <option value="LEFT_CTRL">LEFT_CTRL</option>
+                    <option value="LEFT_SHIFT">LEFT_SHIFT</option>
+                    <option value="LEFT_ALT">LEFT_ALT</option>
+                    <option value="LEFT_GUI">LEFT_GUI</option>
+                  </select>
+                  <label>code</label> <select class="form-control" v-model.number="params_key_update.code">
+                    <option v-for="(item, index) in keyid_list" v-bind:value="item.keyid">{{item.disp}}</option>
+                  </select>
+                </div>
+              </span>
+              <span v-if="params_key_update.key_type=='key_mac'">
+                <div class="form-inline">
+                  <label>mod</label> <select class="form-control" v-model="params_key_update.mods" multiple>
+                    <option value="LEFT_CTRL">Control</option>
+                    <option value="LEFT_SHIFT">Shift</option>
+                    <option value="LEFT_ALT">Option</option>
+                    <option value="LEFT_GUI">Command</option>
+                    <option value="LEFT_CAPS_LOCK">CapsLock</option>
+                    <option value="LEFT_TAB">Tab</option>
+                  </select>
+                  <label>code</label> <select class="form-control" v-model="params_key_update.code">
+                    <option v-for="(item, index) in keyid_list" v-bind:value="item.keyid">{{item.disp}}</option>
+                  </select>
+                </div>
+              </span>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-default" v-on:click="call_key_update">更新</button>
+              <button class="btn btn-default" v-on:click="dialog_close('#key_update_dialog')">キャンセル</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+    <!-- for progress-dialog -->
+    <progress-dialog v-bind:title="progress_title"></progress-dialog>
+  </div>
+
+  <script src="js/keyid_list.js"></script>
+  <script src="js/start.js"></script>
+
+</body>
