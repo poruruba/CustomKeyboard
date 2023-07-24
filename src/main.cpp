@@ -220,9 +220,9 @@ void process_hid(void){
   }
 }
 
-uint16_t current_index = 0;
-
 void loop() {
+  static uint16_t current_index = 0;
+
   M5.update();
 
   if( mode == MODE_EDIT ){
@@ -254,8 +254,6 @@ void loop() {
     }      
 
     if( M5.BtnB.wasPressed() ){
-      M5.Lcd.clear();
-      M5.Lcd.setCursor(0, 0);
       JsonArray list = jsonDoc.as<JsonArray>();
       if( list.size() > 0 ){
         current_index++;
@@ -264,6 +262,8 @@ void loop() {
         JsonObject item = list[current_index];
         const char *p_ir_name = item["ir_name"];
         const char *p_key_name = item["key_name"];
+        M5.Lcd.clear();
+        M5.Lcd.setCursor(0, 0);
         M5.Lcd.println(p_ir_name);
         if( p_key_name != NULL )
           M5.Lcd.println(p_key_name);
