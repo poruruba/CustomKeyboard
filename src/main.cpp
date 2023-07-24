@@ -230,7 +230,7 @@ void loop() {
     process_edit();
 
   }else if( mode == MODE_HID ){
-    if(EBK_isConnected) {
+    if(EBK_isConnected()) {
       if( !nowBleConnected ){
         nowBleConnected = true;
         Serial.println("Ble Connected");
